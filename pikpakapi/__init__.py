@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 from .enums import DownloadStatus
 from .PikpakException import PikpakException, PikpakAccessTokenExpireException
+import json
 
 
 class PikPakApi:
@@ -96,6 +97,25 @@ class PikPakApi:
     ) -> Dict[str, Any]:
         async with httpx.AsyncClient(proxies=proxies) as client:
             response = await client.post(url, json=data, headers=headers)
+            json_data = response.json()
+            if "error" in json_data:
+                if json_data["error_code"] == 16:
+                    raise PikpakAccessTokenExpireException(
+                        json_data["error_description"]
+                    )
+                raise PikpakException(f"{json_data['error_description']}")
+            return json_data
+
+    async def _request_delete(
+        self,
+        url: str,
+        params: dict = None,
+        headers: dict = None,
+        proxies: httpx.Proxy = None,
+    ) -> Dict[str, Any]:
+        async with httpx.AsyncClient(proxies=proxies) as client:
+            response = await client.delete(url, params=params, headers=headers)
+
             json_data = response.json()
             if "error" in json_data:
                 if json_data["error_code"] == 16:
@@ -233,7 +253,7 @@ class PikPakApi:
         return result
 
     async def offline_list(
-        self, size: int = 10000, next_page_token: Optional[str] = None
+        self, size: int = 10000, next_page_token: Optional[str] = None, phase: Optional[str] = 'PHASE_TYPE_ERROR'
     ) -> Dict[str, Any]:
         """
         size: int - 每次请求的数量
@@ -242,12 +262,13 @@ class PikPakApi:
         获取离线下载列表
         """
         list_url = f"https://{self.PIKPAK_API_HOST}/drive/v1/tasks"
+        dfilter = json.dumps({"phase": {"in": phase}})
         list_data = {
             "type": "offline",
             "thumbnail_size": "SIZE_SMALL",
             "limit": size,
             "next_page_token": next_page_token,
-            "filters": """{"phase": {"in": "PHASE_TYPE_RUNNING,PHASE_TYPE_ERROR"}}""",
+            'filters': dfilter,
         }
         result = await self._request_get(
             list_url, list_data, self.get_headers(), self.proxy
@@ -263,6 +284,21 @@ class PikPakApi:
         url = f"https://{self.PIKPAK_API_HOST}/drive/v1/files/{file_id}"
         result = await self._request_get(
             url, {"thumbnail_size": "SIZE_LARGE"}, self.get_headers(), self.proxy
+        )
+        return result
+
+    async def offline_file_delete(self, task_id: str):
+        """
+        task_id: str - 离线下载文件id
+
+        离线下载任务删除
+        """
+        url = f"https://{self.PIKPAK_API_HOST}/drive/v1/tasks"
+        list_data = {
+            "task_ids[0]": task_id,
+        }
+        result = await self._request_delete(
+            url, list_data, self.get_headers(), self.proxy
         )
         return result
 
