@@ -197,7 +197,7 @@ class PikPakApi:
         """
         url = f"https://{self.PIKPAK_API_HOST}/drive/v1/files:batchTrash"
         data = {
-            "ids": ids,
+            "ids": [ids],
         }
         result = await self._request_post(url, data, self.get_headers(), self.proxy)
         return result
@@ -210,7 +210,7 @@ class PikPakApi:
         """
         url = f"https://{self.PIKPAK_API_HOST}/drive/v1/files:batchUntrash"
         data = {
-            "ids": ids,
+            "ids": [ids],
         }
         result = await self._request_post(url, data, self.get_headers(), self.proxy)
         return result
@@ -223,7 +223,7 @@ class PikPakApi:
         """
         url = f"https://{self.PIKPAK_API_HOST}/drive/v1/files:batchDelete"
         data = {
-            "ids": ids,
+            "ids": [ids],
         }
         result = await self._request_post(url, data, self.get_headers(), self.proxy)
         return result
